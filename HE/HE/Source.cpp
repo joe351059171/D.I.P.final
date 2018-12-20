@@ -13,18 +13,19 @@ Mat DrawHistogram(Mat src) {
 	int size = 256;
 	int channels[1] = { 0 };
 	calcHist(&src, 1, channels, Mat(),histo, dims, &size, ranges,true,false);
-	double max = 0;
-	double min = 0;
-	minMaxLoc(histo, &max, &min);
 	int scale = 1;
-	Mat dst = Mat(800, 800, CV_8U, Scalar(255));
-	double rate = (255 / max)*0.9;
-	normalize(histo, histo);
-	for (int i = 0;i < 256;i++) {
+	cv::Mat histPic(256 * scale, 256, CV_8U, cv::Scalar(255));
+	double maxValue = 0;
+	double minValue = 0;
+	cv::minMaxLoc(histo, &minValue, &maxValue, NULL, NULL);
+	double rate = (256 / maxValue)*0.9;
+
+	for (int i = 0; i < 256; i++)
+	{
 		float value = histo.at<float>(i);
-		cv::line(dst, cv::Point(i*scale, 256), cv::Point(i*scale, 256 - value * rate), cv::Scalar(0));
+		cv::line(histPic, cv::Point(i*scale, 256), cv::Point(i*scale,256 - value * rate), cv::Scalar(0));
 	}
-	return dst;
+	return histPic;
 }
 
 /*
@@ -50,8 +51,12 @@ int main(int argc, char** argv) {
 	cvtColor(src,yuv,COLOR_BGR2YUV);
 	//split todo
 	split(yuv, channel);
+	Mat result = DrawHistogram(channel[0]);
+	imshow("txt", result);
 	//equalizehist todo
 	equalizeHist(channel[0], channel[0]);
+	result = DrawHistogram(channel[0]);
+	imshow("twt", result);
 	merge(channel, yuv);
 	cvtColor(yuv, dst, COLOR_YUV2BGR);
 	imshow("after", dst);
