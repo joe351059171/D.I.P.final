@@ -36,12 +36,12 @@ Mat HistogramEqualize(Mat src) {
 	cvtColor(src, yuv, COLOR_BGR2YUV);
 	//split todo
 	split(yuv, channel);
-	hist = DrawHistogram(channel[0]);
-	imshow("histogram of origin", hist);
+	//hist = DrawHistogram(channel[0]);
+	//imshow("histogram of origin", hist);
 	//equalizeHist todo
 	equalizeHist(channel[0], channel[0]);
-	hist = DrawHistogram(channel[0]);
-	imshow("histogram of HE", hist);
+	//hist = DrawHistogram(channel[0]);
+	//imshow("histogram of HE", hist);
 	//merge todo
 	merge(channel, yuv);
 	cvtColor(yuv, dst, COLOR_YUV2BGR);
@@ -196,21 +196,212 @@ Mat ContrastLimitAHE(Mat src,int _step = 8) {
 	return CLAHE_GO;
 }
 
+double GetVarianceValue(cv::Mat src_img, double MeanVlaue)
+
+{
+
+	if (CV_8UC1 != src_img.type())
+
+	{
+
+		return -1.0;
+
+	}
+
+
+
+	int rows(src_img.rows);   //height
+
+	int cols(src_img.cols);   //width
+
+	unsigned char* data = nullptr;
+
+	double PixelValueSum(0.0);   //总共的像素值
+
+
+
+	for (int i = 0; i < rows; i++)
+
+	{
+
+		data = src_img.ptr<unsigned char>(i);
+
+		for (int j = 0; j < cols; j++)
+
+		{
+
+			PixelValueSum += std::pow((double)(data[j] - MeanVlaue), 2);
+
+		}   //计算图像方差
+
+	}
+
+
+
+	double result(PixelValueSum / static_cast<double>(rows*cols));  //计算图像的均方差
+
+
+	cout << result << "variancevalue" << endl;
+	return result;
+
+}
+
+double GetMeanValue(cv::Mat src_img)
+
+{
+
+	if (CV_8UC1 != src_img.type())
+
+	{
+		cout << "-1" << endl;
+		return -1.0;
+
+	}
+
+
+
+	int rows(src_img.rows);   //height
+
+	int cols(src_img.cols);   //width
+
+	unsigned char* data = nullptr;
+
+	double PixelValueSum(0.0);   //总共的像素值
+
+
+
+	for (int i = 0; i < rows; i++)
+
+	{
+
+		data = src_img.ptr<unsigned char>(i);
+
+		for (int j = 0; j < cols; j++)
+
+		{
+
+			PixelValueSum += (double)data[j];
+
+		}   //计算图像的总共像素值
+
+	}
+
+
+
+	double result(PixelValueSum / static_cast<double>(rows*cols));  //计算图像的均值
+
+
+	cout << result <<"meanvalue"<< endl;
+	return result;
+
+}
+
+Mat ACE_Enhance(cv::Mat src_img, unsigned int half_winSize, double Max_Q)
+
+{
+
+	if (!src_img.data)
+
+	{
+
+		cout << "没有输入图像" << endl;
+
+		//return false;
+
+	}
+
+
+
+	int rows=src_img.rows;
+
+	int cols=src_img.cols;
+
+	unsigned char* data = nullptr;
+
+	unsigned char* data1 = nullptr;
+
+	cv::Mat DstImg(rows, cols, CV_8UC1, cv::Scalar::all(0));
+
+
+
+	//cv::Mat temp = src_img(cv::Rect(721 - half_winSize, 6 - half_winSize, half_winSize * 2 + 1, half_winSize * 2 + 1));    //截取窗口图像
+
+
+
+	for (int i = half_winSize; i < (rows - half_winSize); i++)
+
+	{
+
+		data = DstImg.ptr<unsigned char>(i);
+
+		data1 = src_img.ptr<unsigned char>(i);
+
+		for (int j = half_winSize; j < (cols - half_winSize); j++)
+
+		{
+
+			cv::Mat temp = src_img(cv::Rect(j - half_winSize, i - half_winSize, half_winSize * 2 + 1, half_winSize * 2 + 1));   //截取窗口图像
+
+			double MeanVlaue = GetMeanValue(temp);
+
+			double varian = GetVarianceValue(temp, MeanVlaue);
+
+			if (0 != varian)
+
+			{
+
+				double cg = 100.0 / std::sqrt(varian);
+
+				cg = cg > Max_Q ? Max_Q : cg;
+
+				double pixelvalue = cg * ((double)data1[j] - MeanVlaue);
+
+
+
+				int temp = MeanVlaue + pixelvalue;
+
+				temp = temp > 255 ? 255 : temp;
+
+				temp = temp < 0 ? 0 : temp;
+
+				data[j] = temp;
+
+			}
+
+			else if (varian <= 0.01)    //方差较小的情况直接使用原始值进行替换，防止修改，2018.1.18修改
+
+			{
+
+				data[j] = data1[j];
+
+			}
+
+		}
+
+	}
+
+
+
+
+	return DstImg;
+
+}
+
 int main(int argc, char** argv) {
-	Mat src,dst;
+	Mat src;
+	Mat dst;
 	
 	Mat yuv;
 	vector<Mat>channel(3);
 
 	src = imread(argv[1], 1);
 	imshow("before", src);
-	dst = HistogramEqualize(src);
-	imshow("HE", dst);
-	cvtColor(dst, yuv, COLOR_BGR2YUV);
+	//src = HistogramEqualize(src);
+	cvtColor(src, yuv, COLOR_BGR2YUV);
 	split(yuv, channel);
-	channel[0] = ContrastLimitAHE(channel[0]);
-	merge(channel,yuv);
+	channel[0] = ACE_Enhance(channel[0],5,3);
+	merge(channel, yuv);
 	cvtColor(yuv, dst, COLOR_YUV2BGR);
-	imshow("CLAHE", dst);
+	imshow("after", dst);
 	waitKey(-1);
 }
