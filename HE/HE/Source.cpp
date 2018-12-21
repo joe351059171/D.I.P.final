@@ -33,20 +33,21 @@ Mat HistogramEqualize(Mat src) {
 	Mat yuv,dst;
 	Mat hist;
 	//cvtColor todo
-	cvtColor(src, yuv, COLOR_BGR2YUV);
+	cvtColor(src, yuv, COLOR_BGR2HLS_FULL);
 	//split todo
 	split(yuv, channel);
 	//hist = DrawHistogram(channel[0]);
 	//imshow("histogram of origin", hist);
 	//equalizeHist todo
-	equalizeHist(channel[0], channel[0]);
+	equalizeHist(channel[1], channel[1]);
 	//hist = DrawHistogram(channel[0]);
 	//imshow("histogram of HE", hist);
 	//merge todo
 	merge(channel, yuv);
-	cvtColor(yuv, dst, COLOR_YUV2BGR);
+	cvtColor(yuv, dst, COLOR_HLS2BGR_FULL);
 	return dst;
 }
+
 //CLAHE todo
 Mat ContrastLimitAHE(Mat src,int _step = 8) {
 	Mat CLAHE_GO = src.clone();
@@ -196,106 +197,62 @@ Mat ContrastLimitAHE(Mat src,int _step = 8) {
 	return CLAHE_GO;
 }
 
-double GetVarianceValue(cv::Mat src_img, double MeanVlaue)
 
-{
-
-	if (CV_8UC1 != src_img.type())
-
-	{
-
+double GetVarianceValue(cv::Mat src_img, double MeanVlaue) {
+	if (CV_8UC1 != src_img.type()) {
 		return -1.0;
-
 	}
-
-
-
-	int rows(src_img.rows);   //height
-
-	int cols(src_img.cols);   //width
-
+	int rows(src_img.rows);   
+	int cols(src_img.cols);   
 	unsigned char* data = nullptr;
-
-	double PixelValueSum(0.0);   //总共的像素值
-
-
-
-	for (int i = 0; i < rows; i++)
-
-	{
-
+	double PixelValueSum(0.0);
+	for (int i = 0; i < rows; i++) {
 		data = src_img.ptr<unsigned char>(i);
-
-		for (int j = 0; j < cols; j++)
-
-		{
-
+		for (int j = 0; j < cols; j++) {
 			PixelValueSum += std::pow((double)(data[j] - MeanVlaue), 2);
-
-		}   //计算图像方差
-
+		}
 	}
-
-
-
-	double result(PixelValueSum / static_cast<double>(rows*cols));  //计算图像的均方差
-
-
-	cout << result << "variancevalue" << endl;
+	double result(PixelValueSum / static_cast<double>(rows*cols));
+	cout << "vv" << result << endl;
 	return result;
-
 }
 
-double GetMeanValue(cv::Mat src_img)
 
-{
 
-	if (CV_8UC1 != src_img.type())
-
-	{
-		cout << "-1" << endl;
+double GetMeanValue(Mat src_img) {
+	if (CV_8UC1 != src_img.type()) {
 		return -1.0;
-
 	}
-
-
-
-	int rows(src_img.rows);   //height
-
-	int cols(src_img.cols);   //width
-
+	int rows(src_img.rows);
+	int cols(src_img.cols);
 	unsigned char* data = nullptr;
-
-	double PixelValueSum(0.0);   //总共的像素值
-
-
-
-	for (int i = 0; i < rows; i++)
-
-	{
-
+	double PixelValueSum(0.0);
+	for (int i = 0; i < rows; i++) {
 		data = src_img.ptr<unsigned char>(i);
-
-		for (int j = 0; j < cols; j++)
-
-		{
-
+		for (int j = 0; j < cols; j++) {
 			PixelValueSum += (double)data[j];
-
-		}   //计算图像的总共像素值
-
+		}
 	}
-
-
-
-	double result(PixelValueSum / static_cast<double>(rows*cols));  //计算图像的均值
-
-
-	cout << result <<"meanvalue"<< endl;
+	double result(PixelValueSum / static_cast<double>(rows*cols));
+	cout << "Mean:" << result << endl;
 	return result;
-
 }
 
+/*
+double GetMeanValue(Mat src) {
+	Scalar PixelSum;
+	double result;
+	PixelSum = sum(src);
+	result = PixelSum[0] / (src.rows*src.cols);
+	return result;
+}
+
+double GetVarianceValue(Mat src) {
+	Scalar mean, stddev;
+	meanStdDev(src, mean, stddev);
+	return stddev[0];
+}
+*/
 Mat ACE_Enhance(cv::Mat src_img, unsigned int half_winSize, double Max_Q)
 
 {
@@ -315,7 +272,6 @@ Mat ACE_Enhance(cv::Mat src_img, unsigned int half_winSize, double Max_Q)
 	int rows=src_img.rows;
 
 	int cols=src_img.cols;
-
 	unsigned char* data = nullptr;
 
 	unsigned char* data1 = nullptr;
@@ -344,12 +300,12 @@ Mat ACE_Enhance(cv::Mat src_img, unsigned int half_winSize, double Max_Q)
 
 			double MeanVlaue = GetMeanValue(temp);
 
-			double varian = GetVarianceValue(temp, MeanVlaue);
+			double varian = GetVarianceValue(temp,MeanVlaue);
 
 			if (0 != varian)
 
 			{
-
+				//double cg = 100.0/varian;
 				double cg = 100.0 / std::sqrt(varian);
 
 				cg = cg > Max_Q ? Max_Q : cg;
@@ -396,12 +352,16 @@ int main(int argc, char** argv) {
 
 	src = imread(argv[1], 1);
 	imshow("before", src);
-	//src = HistogramEqualize(src);
-	cvtColor(src, yuv, COLOR_BGR2YUV);
+	src = HistogramEqualize(src);
+	cvtColor(src, yuv, COLOR_BGR2HLS_FULL);
 	split(yuv, channel);
-	channel[0] = ACE_Enhance(channel[0],5,3);
+	//imshow("channel0", channel[0]);
+	//imshow("channel1", channel[1]);
+	//imshow("channel2", channel[2]);
+	//channel[1] = ContrastLimitAHE(channel[1],1);
+	channel[1] = ACE_Enhance(channel[1],10,2);
 	merge(channel, yuv);
-	cvtColor(yuv, dst, COLOR_YUV2BGR);
+	cvtColor(yuv, dst, COLOR_HLS2BGR_FULL);
 	imshow("after", dst);
 	waitKey(-1);
 }
