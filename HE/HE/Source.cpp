@@ -34,7 +34,7 @@ Mat HistogramEqualize(Mat src) {
 	Mat hist;
 	//cvtColor todo
 	cvtColor(src, yuv, COLOR_BGR2YUV);
-	//splt todo
+	//split todo
 	split(yuv, channel);
 	hist = DrawHistogram(channel[0]);
 	imshow("histogram of origin", hist);
@@ -47,7 +47,7 @@ Mat HistogramEqualize(Mat src) {
 	cvtColor(yuv, dst, COLOR_YUV2BGR);
 	return dst;
 }
-
+//CLAHE todo
 Mat ContrastLimitAHE(Mat src,int _step = 8) {
 	Mat CLAHE_GO = src.clone();
 	int block = _step;//pblock
@@ -199,10 +199,18 @@ Mat ContrastLimitAHE(Mat src,int _step = 8) {
 int main(int argc, char** argv) {
 	Mat src,dst;
 	
-	src = imread(argv[1], IMREAD_COLOR);
+	Mat yuv;
+	vector<Mat>channel(3);
+
+	src = imread(argv[1], 1);
 	imshow("before", src);
 	dst = HistogramEqualize(src);
-	imshow("after", dst);
- 
+	imshow("HE", dst);
+	cvtColor(dst, yuv, COLOR_BGR2YUV);
+	split(yuv, channel);
+	channel[0] = ContrastLimitAHE(channel[0]);
+	merge(channel,yuv);
+	cvtColor(yuv, dst, COLOR_YUV2BGR);
+	imshow("CLAHE", dst);
 	waitKey(-1);
 }
